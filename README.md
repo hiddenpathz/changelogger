@@ -1,25 +1,32 @@
-# Go Changelogger
+# Changelogger
 
-Отдельная Go-реализация `changelogger`, которую можно собрать в один бинарник и запускать без PHP и Composer на машине пользователя.
+Changelogger - это консольный инструмент, который автоматически генерирует блок для `CHANGELOG.md` по git-коммитам.
 
-## Сборка
+Go-версия поставляется как один бинарник и не требует PHP, Composer или Packagist на машине пользователя.
 
-```bash
-go build -o ./bin/changelogger ./cmd/changelogger
-```
+## Требования к окружению
 
-После сборки пользователю нужен только файл `bin/changelogger`.
+Для работы Changelogger нужны:
+
+- Git;
+- репозиторий с ветками `develop` и `origin/master`;
+- git tags в формате `X.Y.Z`, например `1.24.5`;
+- файл `.env` в каталоге запуска;
+- файл `CHANGELOG.md` в корне проекта или путь к нему в `CHANGELOG_PATH`.
 
 ## Установка
 
-После публикации release-артефактов установка выполняется одной командой:
+Для установки или обновления выполните:
 
 ```bash
 curl -fsSL https://github.com/hiddenpathz/changelogger/releases/latest/download/changelogger-install | sh
 ```
 
-Installer сам определит ОС и поставит бинарник в `/usr/local/bin/changelogger`.
-После этого `changelogger` можно запускать из корня любого проекта с `.env` и `CHANGELOG.md`.
+Installer сам определит ОС и установит бинарник в:
+
+```text
+/usr/local/bin/changelogger
+```
 
 Если нужен другой каталог установки:
 
@@ -27,9 +34,165 @@ Installer сам определит ОС и поставит бинарник в
 curl -fsSL https://github.com/hiddenpathz/changelogger/releases/latest/download/changelogger-install | CHANGELOGGER_INSTALL_DIR="$HOME/bin" sh
 ```
 
-## Release-артефакты
+После установки команда доступна из любого проекта:
 
-Собрать два бинарника для публикации:
+```bash
+changelogger
+```
+
+## Подготовка проекта для работы
+
+Добавьте в `.env` проекта:
+
+- ссылку на репозиторий до номера тега;
+- префикс ветки, если он нужен по правилам проекта;
+- название системы задач, если в changelog нужны ссылки на задачи;
+- ссылку на систему задач до кода заявки или шаблон с `{code}`;
+- путь до `CHANGELOG.md`, если он находится не рядом с `.env`.
+
+```env
+REPOSITORY_LINK=https://gitlab.some.ru/your.repo.ru/-/tags/
+BRANCH_PREFIX=MYPROJECT
+TASK_SYSTEM_NAME=SomeTaskSystemName
+TASK_SYSTEM_LINK=https://some-task-system.ru/tasks/view?code=
+CHANGELOG_PATH=./CHANGELOG.md
+```
+
+`TASK_SYSTEM_LINK` можно указывать в одном из форматов:
+
+```env
+TASK_SYSTEM_LINK=https://some-task-system.ru/tasks/view?code=
+TASK_SYSTEM_LINK=https://some-task-system.ru/tasks/view?code={code}
+TASK_SYSTEM_LINK=https://some-task-system.ru
+```
+
+## Запуск
+
+Запускать нужно из каталога проекта, где лежит `.env`:
+
+```bash
+changelogger
+```
+
+Можно явно передать ссылку на репозиторий до номера тега. В этом случае аргумент переопределит `REPOSITORY_LINK` из `.env`:
+
+```bash
+changelogger https://gitlab.some.ru/your.repo.ru/-/tags/
+```
+
+## Использование
+
+- При старте программа переключится на ветку `develop`.
+- Затем попросит ввести номер заявки и задачи в формате `IU000000-W0111111`.
+- После ввода будет создана ветка:
+
+```text
+feature/MYPROJECT-IU000000-W0111111-assign-to-changelog
+```
+
+Если `BRANCH_PREFIX` не указан:
+
+```text
+feature/IU000000-W0111111-assign-to-changelog
+```
+
+Далее программа покажет текущую версию и попросит выбрать, какую часть версии поднять:
+
+```bash
+Текущая версия приложения: 1.24.5
+Какую версию нужно поднять?
+ 1 - major (*.0.0)
+ 2 - minor (0.*.0)
+ 3 - fix   (0.0.*)
+```
+
+После выбора Changelogger выведет изменения, которые попадут в `CHANGELOG.md`, и попросит подтверждение.
+
+## Правила коммитов
+
+В changelog попадают коммиты с префиксами:
+
+| Ключ     | Запись      |
+|----------|-------------|
+| feat     | Реализовано |
+| refactor | Изменено    |
+| fix      | Исправлено  |
+| remove   | Удалено     |
+
+Секции всегда выводятся в регламентном порядке:
+
+```text
+Реализовано
+Изменено
+Исправлено
+Удалено
+```
+
+Описание после префикса поднимается с первой буквы в uppercase:
+
+```bash
+[IDPSPS-IU212256-W0835055] fix: исправлены опечатки
+```
+
+В `CHANGELOG.md` попадет:
+
+```md
+- Исправлены опечатки
+```
+
+Коммиты с другими префиксами не попадут в `CHANGELOG.md`, например:
+
+```md
+wip - промежуточные коммиты в процессе работы
+ci - настройки CI/CD
+build - настройки окружения без пользовательского смысла
+```
+
+## Пример результата
+
+```md
+# История изменений
+
+## [ [1.1.0](https://gitlab.some.ru/your.repo.ru/-/tags/1.1.0) ] - 01.01.2023
+
+- Реализовано:
+  - Отображение кода заявки
+  - Учет параметра "Срочная доставка"
+- Изменено:
+  - Дополнены правила расчета стоимости
+- Исправлено:
+  - Некорректные названия полей в форме
+- Удалено:
+  - Удален устаревший экран настроек
+```
+
+## Завершение работы
+
+После записи `CHANGELOG.md` программа предложит:
+
+- создать commit;
+- push ветки;
+- удалить локальную ветку после push.
+
+Если на вопрос ответить `n`, действие будет отменено. Изменения можно будет завершить вручную.
+
+## Сборка из исходников
+
+Для локальной сборки нужен Go:
+
+```bash
+go build -o ./bin/changelogger ./cmd/changelogger
+```
+
+Проверка:
+
+```bash
+go test ./...
+```
+
+## Публикация релиза без CI
+
+Соберите release-артефакты локально:
 
 ```bash
 ./scripts/build-release.sh
@@ -44,73 +207,18 @@ dist/changelogger-install
 dist/checksums.txt
 ```
 
+Создайте GitHub Release в `https://github.com/hiddenpathz/changelogger` и приложите все файлы из `dist/`.
+
+После публикации проверьте установку:
+
+```bash
+curl -fsSL https://github.com/hiddenpathz/changelogger/releases/latest/download/changelogger-install | sh
+changelogger
+```
+
 Локально проверить installer без GitHub Releases можно так:
 
 ```bash
 ./scripts/build-release.sh
 CHANGELOGGER_BASE_URL="file://$PWD/dist" CHANGELOGGER_INSTALL_DIR="$HOME/bin" ./changelogger-install
-```
-
-## Публикация релиза без CI
-
-1. Соберите артефакты локально:
-
-   ```bash
-   ./scripts/build-release.sh
-   ```
-
-2. Создайте GitHub Release в `https://github.com/hiddenpathz/changelogger`.
-
-3. Приложите к release все файлы из `dist/`:
-
-   ```text
-   changelogger-darwin-universal
-   changelogger-linux-amd64
-   changelogger-install
-   checksums.txt
-   ```
-
-4. После публикации проверьте установку:
-
-   ```bash
-   curl -fsSL https://github.com/hiddenpathz/changelogger/releases/latest/download/changelogger-install | sh
-   changelogger
-   ```
-
-## Запуск
-
-Запускать нужно из корня проекта, где лежит `.env`:
-
-```bash
-changelogger
-changelogger https://gitlab.some.ru/your.repo.ru/-/tags/
-```
-
-Поддерживаемые переменные `.env`:
-
-```env
-REPOSITORY_LINK=https://gitlab.some.ru/your.repo.ru/-/tags/
-CHANGELOG_PATH=./CHANGELOG.md
-BRANCH_PREFIX=MYPROJECT
-TASK_SYSTEM_NAME=SomeTaskSystemName
-TASK_SYSTEM_LINK=https://some-task-system.ru/tasks/view?code=
-```
-
-## Что делает
-
-1. Проверяет `.env`.
-2. Получает последний git tag.
-3. Просит номер заявки и задачи.
-4. Создает ветку `feature/<BRANCH_PREFIX>-<Заявка-Задача>-assign-to-changelog`.
-5. Просит выбрать уровень версии: `1` major, `2` minor, `3` fix.
-6. Берет коммиты из `lastTag..develop`.
-7. Группирует `feat`, `refactor`, `fix`, `remove` в регламентном порядке: `Реализовано`, `Изменено`, `Исправлено`, `Удалено`.
-8. Поднимает первый символ описания после префикса коммита в uppercase.
-9. Вставляет новый блок в `CHANGELOG.md`.
-10. По подтверждению создает commit, push и удаляет локальную ветку.
-
-## Проверка
-
-```bash
-go test ./...
 ```
