@@ -164,21 +164,23 @@ func (changelog Changelog) taskLink(code string) string {
 }
 
 type changeType struct {
-	Key   string
+	Keys  []string
 	Title string
 }
 
 var changeTypes = []changeType{
-	{Key: "feat", Title: "Реализовано"},
-	{Key: "refactor", Title: "Изменено"},
-	{Key: "fix", Title: "Исправлено"},
-	{Key: "remove", Title: "Удалено"},
+	{Keys: []string{"feat"}, Title: "Реализовано"},
+	{Keys: []string{"refactor", "change"}, Title: "Изменено"},
+	{Keys: []string{"fix"}, Title: "Исправлено"},
+	{Keys: []string{"remove"}, Title: "Удалено"},
 }
 
 func changeTypeTitle(key string) (string, bool) {
 	for _, changeType := range changeTypes {
-		if changeType.Key == key {
-			return changeType.Title, true
+		for _, changeKey := range changeType.Keys {
+			if changeKey == key {
+				return changeType.Title, true
+			}
 		}
 	}
 
